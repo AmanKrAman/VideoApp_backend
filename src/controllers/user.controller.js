@@ -2,7 +2,7 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import {User} from "../models/user.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js"
 import jwt from "jsonwebtoken"
 
 
@@ -235,11 +235,21 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     if (!avatarLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
+
+    const currentUser = await User.findById(req.user?._id)
+    const oldAvatarUrl = currentUser.avatar
+
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
     if(!avatar.url){
         throw new ApiError(400, "Error while uploading on avatar")
     }
+
+    if (oldAvatarUrl) {
+        const publicId = oldAvatarUrl.split('/').pop().split('.')[0]
+        await deleteFromCloudinary(publicId)
+    }
+
     const user = await User.findByIdAndUpdate(req.user?._id , {$set: {avatar : avatar.url}},{new: true}).select("-password")
 
     return res
@@ -247,17 +257,25 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user , "Avatar Updated"))
 })
 
-
 const updateUserCoverImage = asyncHandler(async (req, res) => {
     const coverImageLocalPath = req.file?.path
     if (!coverImageLocalPath) {
         throw new ApiError(400, "Avatar file is missing")
     }
+    const currentUser = await User.findById(req.user?._id)
+    const oldcoverImageUrl = currentUser.coverImage
+
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if(!coverImage.url){
         throw new ApiError(400, "Error while uploading on coverImage")
     }
+
+    if (oldcoverImageUrl) {
+        const publicId = oldcoverImageUrl.split('/').pop().split('.')[0]
+        await deleteFromCloudinary(publicId)
+    }
+
     const user = await User.findByIdAndUpdate(req.user?._id , {$set: {coverImage : coverImage.url}},{new: true}).select("-password")
 
     return res

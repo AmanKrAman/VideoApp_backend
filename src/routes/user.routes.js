@@ -34,6 +34,8 @@ userRouter.route("/logout").post(verifyJWT , logoutUser)
 userRouter.route("/refresh-token").post(refreshAccessToken)
 userRouter.route("/changepassword").post(verifyJWT ,changeCurrentPassword)
 userRouter.route("/getuser").get(verifyJWT ,getCurrentUser)
-userRouter.route("/updateaccountdetails").post(updateAccountDetails)
+userRouter.route("/updateaccount").patch(verifyJWT, updateAccountDetails)
+userRouter.route("/updateavatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
+userRouter.route("/updatecoverimage").patch(verifyJWT, upload.single("coverImage"), updateUserCoverImage)
 
 export default userRouter
