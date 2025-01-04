@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js"
 import jwt from "jsonwebtoken"
+import mongoose from "mongoose";
 
 
 const generateAccessAndRefereshTokens = async(userId) => {
@@ -321,7 +322,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 },
                 isSubscribed : {
                     $cond : {
-                        if: {$in : [req.user?._id , "#subscribers.subscriber"]},
+                        if: {$in : [req.user?._id , "$subscribers.subscriber"]},
                         then: true,
                         else: false
                     }
@@ -395,7 +396,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
 
     return res
     .status(200)
-    .json(new ApiResponse(200 , user[0].watchHistory , "Watch History Fetched successfullt."))
+    .json(new ApiResponse(200 , user[0].watchHistory , "Watch History Fetched successfully."))
 })
 
 export {
