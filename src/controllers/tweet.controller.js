@@ -123,7 +123,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     if(!tweet){
         throw new ApiError(404 , "Tweet not found.")
     }
-    if(tweet?.owner.toString() != req.user?._id.toString()){
+    if(tweet?.owner.toString() !== req.user?._id.toString()){
         throw new ApiError(400, "only owner can update this tweet.")
     }
 
@@ -157,7 +157,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
     if(!tweet){
         throw new ApiError(404 , "Tweet not found.")
     }
-    if(tweet.owner?._id.toString() != req.user?._id.toString()){
+    if(tweet.owner?._id.toString() !== req.user?._id.toString()){
         throw new ApiError(404, "only owner can delete the tweet")
     }
     await Tweet.findByIdAndDelete(tweetId)
