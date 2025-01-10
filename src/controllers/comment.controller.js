@@ -152,7 +152,7 @@ const updateComment = asyncHandler(async (req, res) => {
 
 const deleteComment = asyncHandler(async (req, res) => {
     // TODO: delete a comment
-    const ownerId = req.user._id;
+    const ownerId = req.user?._id;
     const { commentId } = req.params;
 
     const comment = await Comment.findById(commentId);
