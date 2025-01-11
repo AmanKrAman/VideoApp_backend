@@ -70,7 +70,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
         totalviews: video[0]?.totalviews || 0,
         totalvideos: video[0]?.totalvideos || 0
     }
-    return res.
+    return res  
     .status(200)
     .json(new ApiResponse(200, channelstats , "channel details fetched successfully"))
 })
