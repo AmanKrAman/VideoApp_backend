@@ -214,7 +214,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
     if(!title || !description){
         throw new ApiError(400 , "title and description are required")
     }
-    const videoLocalPath = req.files?.video[0]?.path;
+    const videoLocalPath = req.files?.videoFile[0]?.path;
     const thumbnailLocalPath = req.files?.thumbnail[0]?.path;
 
     if(!videoLocalPath){
@@ -224,31 +224,31 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(400, "thumbnail is required.")
     }
 
-    const video = await uploadOnCloudinary(videoLocalPath)
+    const videoFile = await uploadOnCloudinary(videoLocalPath)
     const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
 
-    if (!video) {
+    if (!videoFile) {
         throw new ApiError(400, "video is required.")
     }
 
     if (!thumbnail) {
         throw new ApiError(400, "thumbnail is required.")
     }
-    const videoobj = await  Video.create({
+    const videoobj = await Video.create({
+        title,
+        description,
+        duration: videoFile.duration,
         videoFile: {
-            url: video.url,
-            public_id: video.public_id
+            url: videoFile.url,
+            public_id: videoFile.public_id
         },
         thumbnail: {
             url: thumbnail.url,
             public_id: thumbnail.public_id
         },
         owner: req.user?._id,
-        title,
-        description,
-        duration: video.duration,
         isPublished: false
-    })
+    });
 
     const videoupload = await Video.findById(videoobj._id)
 
