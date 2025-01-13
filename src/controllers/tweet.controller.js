@@ -7,7 +7,7 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 
 const createTweet = asyncHandler(async (req, res) => {
     //TODO: create tweet
-    user_id = req.user?._id
+    const user_id = req.user?._id
     const {content} = req.body
     if(!content){
         throw new ApiError(400, "content is required")
