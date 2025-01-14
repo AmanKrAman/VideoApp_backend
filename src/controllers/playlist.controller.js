@@ -1,5 +1,6 @@
 import mongoose, {isValidObjectId} from "mongoose"
 import {Playlist} from "../models/playlist.model.js"
+import {Video} from "../models/video.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
@@ -9,7 +10,7 @@ const createPlaylist = asyncHandler(async (req, res) => {
     const {name, description} = req.body
 
     //TODO: create playlist
-    user_id = req.user?.user_id
+    const user_id = req.user?._id
 
     if (!name || !description) {
         throw new ApiError(400, "name and description both are required");
@@ -247,7 +248,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Playlist not found");
     }
 
-    if (playlist.owner.toString() !== req.user?._id.toString()) {
+    if (playlist.owner?.toString() !== req.user?._id.toString()) {
         throw new ApiError(400, "only owner can delete the playlist");
     }
 
@@ -283,7 +284,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Playlist not found");
     }
 
-    if (playlist.owner.toString() !== req.user?._id.toString()) {
+    if (playlist.owner?.toString() !== req.user?._id.toString()) {
         throw new ApiError(400, "only owner can edit the playlist");
     }
 
