@@ -17,10 +17,10 @@ const createPlaylist = asyncHandler(async (req, res) => {
     }
 
     try {
-        const newplaylist = await Playlist.create({name , description})
+        const newplaylist = await Playlist.create({name , description , owner: req.user?._id})
         return res
         .status(200)
-        .json(new ApiResponse(200 ,"Playlist created successfully."))
+        .json(new ApiResponse(200 ,{Playlist_id : newplaylist._id},"Playlist created successfully."))
     } catch (error) {
         throw new ApiError(500 , error?.message || "Unable to create playlist.")
     }
@@ -37,7 +37,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     const playlists = await Playlist.aggregate([
         {
             $match: {
-                owner: mongoose.Types.ownerId(user_id)
+                owner: new mongoose.Types.ObjectId(userId)
             },   
         },
         {
@@ -71,14 +71,14 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     ])
     return res
     .status(200)
-    .json(200 , playlists, "playlist fetched successfully.")
+    .json(new ApiResponse(200 , playlists, "playlist fetched successfully."))
 
 })
 
 const getPlaylistById = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
     //TODO: get playlist by id
-    user_id = req.user?._id
+    const user_id = req.user?._id
     if (!isValidObjectId(playlistId)) {
         throw new ApiError(400, "Invalid PlaylistId");
     }
@@ -90,7 +90,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     const playlistvideos = await Playlist.aggregate([
         {
             $match: {
-                _id : mongoose.Types.ObjectId(playlistId)
+                _id : new mongoose.Types.ObjectId(playlistId)
             }
         },
         {
@@ -182,7 +182,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     ) {
         throw new ApiError(400, "only owner can add video to thier playlist");
     }
-    const addvideo = await playlist.findByIdAndUpdate(playlist?._id,{
+    const addvideo = await Playlist.findByIdAndUpdate(playlist?._id,{
         $addToSet: {
             videos: videoId
         }
@@ -221,7 +221,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(400, "only owner can remove video to their playlist");
     }
 
-    const pullvideo = await playlist.findByIdAndUpdate(
+    const pullvideo = await Playlist.findByIdAndUpdate(
         playlist?._id,
         {
             $pull : {
@@ -260,7 +260,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
             new ApiResponse(
                 200,
                 {},
-                "playlist updated successfully"
+                "playlist deleted successfully"
             )
         );
 })
@@ -288,7 +288,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(400, "only owner can edit the playlist");
     }
 
-    const updatedplaylist = await playlist.findByIdAndUpdate(
+    const updatedplaylist = await Playlist.findByIdAndUpdate(
         playlist?._id, 
         {
             $set: {
