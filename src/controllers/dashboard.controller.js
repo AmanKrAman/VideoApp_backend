@@ -25,7 +25,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
         }
     ]);
 
-    const video = await video.aggregate([
+    const video = await Video.aggregate([
         {
             $match: {
                 owner: new mongoose.Types.ObjectId(user_id)
@@ -128,7 +128,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     ]);
     return res
     .status(200)
-    .json(new ApiResponse(200 , videos , "channel stats fetched successfully."))
+    .json(new ApiResponse(200 , videos , "channel videos fetched successfully."))
 })
 
 export {
