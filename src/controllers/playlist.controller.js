@@ -76,21 +76,22 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 })
 
 const getPlaylistById = asyncHandler(async (req, res) => {
-    const {playlistId} = req.params
-    //TODO: get playlist by id
-    const user_id = req.user?._id
+    const { playlistId } = req.params;   //testing pending(error is there)
+
     if (!isValidObjectId(playlistId)) {
         throw new ApiError(400, "Invalid PlaylistId");
     }
 
     const playlist = await Playlist.findById(playlistId);
-    if(!playlist){
+
+    if (!playlist) {
         throw new ApiError(404, "Playlist not found");
     }
-    const playlistvideos = await Playlist.aggregate([
+
+    const playlistVideos = await Playlist.aggregate([
         {
             $match: {
-                _id : new mongoose.Types.ObjectId(playlistId)
+                _id: new mongoose.Types.ObjectId(playlistId)
             }
         },
         {
@@ -98,30 +99,29 @@ const getPlaylistById = asyncHandler(async (req, res) => {
                 from: "videos",
                 localField: "videos",
                 foreignField: "_id",
-                as: "videos"
+                as: "videos",
             }
         },
         {
             $match: {
-                "videos.isPublished" : true
+                "videos.isPublished": true
             }
         },
         {
-            $lookup:{
+            $lookup: {
                 from: "users",
-                localField:"owner",
+                localField: "owner",
                 foreignField: "_id",
-                as: "owner"
+                as: "owner",
             }
         },
         {
             $addFields: {
-                totalvideos: {
+                totalVideos: {
                     $size: "$videos"
                 },
-                totalviews:{
+                totalViews: {
                     $sum: "$videos.views"
-                    
                 },
                 owner: {
                     $first: "$owner"
@@ -132,10 +132,10 @@ const getPlaylistById = asyncHandler(async (req, res) => {
             $project: {
                 name: 1,
                 description: 1,
-                createdAt:1,
+                createdAt: 1,
                 updatedAt: 1,
-                totalvideos: 1,
-                totalviews: 1,
+                totalVideos: 1,
+                totalViews: 1,
                 videos: {
                     _id: 1,
                     "videoFile.url": 1,
@@ -147,17 +147,18 @@ const getPlaylistById = asyncHandler(async (req, res) => {
                     views: 1
                 },
                 owner: {
-                    _id: 1,
-                    fullname : 1,
                     username: 1,
+                    fullname: 1,
                     "avatar.url": 1
                 }
             }
         }
-    ])
+        
+    ]);
+
     return res
-    .status(200)
-    .json(new ApiResponse(200, playlistvideos[0], "playlist fetched successfully"))
+        .status(200)
+        .json(new ApiResponse(200, playlistVideos[0], "playlist fetched successfully"));
 })
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {

@@ -17,7 +17,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Video not found");
     }
 
-    const commentsAggregate = await Comment.aggregate([
+    const commentsAggregate = Comment.aggregate([
         {
             $match: {
                 video: new mongoose.Types.ObjectId(videoId)
@@ -44,12 +44,12 @@ const getVideoComments = asyncHandler(async (req, res) => {
                 likesCount: {
                     $size: "$likes"
                 },
-                owner:{
+                owner: {
                     $first: "$owner"
                 },
                 isLiked: {
                     $cond: {
-                        if: {$in: [req.user?._id, "$likes.likedBy"]},
+                        if: { $in: [req.user?._id, "$likes.likedBy"] },
                         then: true,
                         else: false
                     }
@@ -66,7 +66,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
                 content: 1,
                 createdAt: 1,
                 likesCount: 1,
-                owner:{
+                owner: {
                     username: 1,
                     fullname: 1,
                     "avatar.url": 1
@@ -84,7 +84,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const comments = await Comment.aggregatePaginate(
         commentsAggregate,
         options
-    )
+    );
     return res
         .status(200)
         .json(new ApiResponse(200,comments , "Comments fetched successfully."))
@@ -135,19 +135,29 @@ const updateComment = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Comment not found");
     }
 
-    try {
-        const updatecomment = await Comment.findOneAndUpdate({owner:ownerId , video: videoId} , {$set: {content : content}},{new: true})
-
-        if(!updatecomment){
-            throw new ApiError(404 , "Comment not found.")
-        }
-        return res
-        .status(200)
-        .json(new ApiResponse(200 , "Comment updated successfully."))
-        
-    } catch (error) {
-        throw new ApiError(500 , error?.message || "Failed to update comment.")
+    if (comment?.owner.toString() !== req.user?._id.toString()) {
+        throw new ApiError(400, "only comment owner can edit their comment");
     }
+
+    const updatedComment = await Comment.findByIdAndUpdate(
+        comment?._id,
+        {
+            $set: {
+                content
+            }
+        },
+        { new: true }
+    );
+
+    if (!updatedComment) {
+        throw new ApiError(500, "Failed to edit comment please try again");
+    }
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, updatedComment, "Comment edited successfully")
+        );
 })
 
 const deleteComment = asyncHandler(async (req, res) => {
@@ -161,18 +171,22 @@ const deleteComment = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Comment not found");
     }
 
-    try {
-        await Comment.findByIdAndDelete({comment: commentId})
-
-        await Like.deleteMany({comment: commentId,likedBy: ownerId});
-
-        return res
-        .status(200)
-        .json(new ApiResponse(200, "Comment deleted successfully."))
-        
-    } catch (error) {
-        throw new ApiError(500 , error?.message || "Failed to delete comment.")
+    if (comment?.owner.toString() !== req.user?._id.toString()) {
+        throw new ApiError(400, "only comment owner can delete their comment");
     }
+
+    await Comment.findByIdAndDelete(commentId);
+
+    await Like.deleteMany({
+        comment: commentId,
+        likedBy: req.user
+    });
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, { commentId }, "Comment deleted successfully")
+        );
 })
 
 export {
