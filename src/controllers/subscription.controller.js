@@ -34,9 +34,9 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200 , {channelId, subscribed : true} ,"Subscribed successfully."))
 })
 
-// controller to return subscriber list of a channel
+// controller to return subscriber list of a channel  + //error in this endpoint
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
-    let { channelId } = req.params;  //error in this endpoint
+    let { channelId } = req.params;  
 
     if (!isValidObjectId(channelId)) {
         throw new ApiError(400, "Invalid channelId");

@@ -8,10 +8,8 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js"
 
-
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
-    //TODO: get all videos based on query, sort, pagination
     
     const pipeline = [];
     if (query) {
@@ -400,7 +398,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
         .json(
             new ApiResponse(
                 200,
-                { isPublished: toggledVideoPublish.isPublished },
+                { videoId, isPublished: toggledVideoPublish.isPublished },
                 "Video publish toggled successfully"
             )
         );
