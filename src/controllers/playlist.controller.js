@@ -75,7 +75,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 
 })
 
-//error in this endpoint
+
 const getPlaylistById = asyncHandler(async (req, res) => {
     const { playlistId } = req.params;   
 
