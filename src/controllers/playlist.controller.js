@@ -4,6 +4,7 @@ import {Video} from "../models/video.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import { cacheManager } from "../utils/cacheManager.js"
 
 
 const createPlaylist = asyncHandler(async (req, res) => {
@@ -18,6 +19,9 @@ const createPlaylist = asyncHandler(async (req, res) => {
 
     try {
         const newplaylist = await Playlist.create({name , description , owner: req.user?._id})
+
+        await cacheManager.clearPlaylistCache(user_id)
+
         return res
         .status(200)
         .json(new ApiResponse(200 ,{Playlist_id : newplaylist._id},"Playlist created successfully."))
@@ -32,6 +36,15 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 
     if (!isValidObjectId(userId)) {
         throw new ApiError(400, "Invalid userId");
+    }
+
+    const cacheKey = cacheManager.keys.UserPlayList(userId)
+    const cachedPlaylists = await cacheManager.get(cacheKey)
+
+    if (cachedPlaylists) {
+        return res
+        .status(200)
+        .json(new ApiResponse(200, cachedPlaylists, "Playlists fetched from cache successfully."))
     }
 
     const playlists = await Playlist.aggregate([
@@ -69,6 +82,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
             }
         }
     ])
+    await cacheManager.set(cacheKey, playlists)
     return res
     .status(200)
     .json(new ApiResponse(200 , playlists, "playlist fetched successfully."))
@@ -81,6 +95,15 @@ const getPlaylistById = asyncHandler(async (req, res) => {
 
     if (!isValidObjectId(playlistId)) {
         throw new ApiError(400, "Invalid PlaylistId");
+    }
+
+    const cacheKey = cacheManager.keys.PlaylistList(playlistId)
+    const cachedPlaylist = await cacheManager.get(cacheKey)
+
+    if (cachedPlaylist) {
+        return res
+        .status(200)
+        .json(new ApiResponse(200, cachedPlaylist, "Playlist fetched from cache successfully"));
     }
 
     const playlist = await Playlist.findById(playlistId);
@@ -157,6 +180,8 @@ const getPlaylistById = asyncHandler(async (req, res) => {
         
     ]);
 
+    await cacheManager.set(cacheKey, playlistVideos[0])
+
     return res
         .status(200)
         .json(new ApiResponse(200, playlistVideos[0], "playlist fetched successfully"));
@@ -193,6 +218,10 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     if(!addvideo){
         throw new ApiError(400, "Failed to add video to playlist , please try again")
     }
+
+    await cacheManager.clearPlaylistCache(playlistId)
+    await cacheManager.clearPlaylistCache(req.user?._id)
+
     return res
     .status(200)
     .json(new ApiResponse(200 ,addvideo, "video added to playlist successfully."))
@@ -232,6 +261,10 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
         },
         {new: true}
     )
+
+    await cacheManager.clearPlaylistCache(playlistId)
+    await cacheManager.clearPlaylistCache(req.user?._id)
+
     return res
     .status(200)
     .json(new ApiResponse(200 ,pullvideo, "Removed video from playlist successfully."))
@@ -255,6 +288,9 @@ const deletePlaylist = asyncHandler(async (req, res) => {
     }
 
     await Playlist.findByIdAndDelete(playlist?._id);
+
+    await cacheManager.clearPlaylistCache(playlistId)
+    await cacheManager.clearPlaylistCache(req.user?._id)
 
     return res
         .status(200)
@@ -300,6 +336,10 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         },
         {new : true}
     )
+
+    await cacheManager.clearPlaylistCache(playlistId)
+    await cacheManager.clearPlaylistCache(req.user?._id)
+
     return res
     .status(200)
     .json(new ApiResponse(200 , updatedplaylist, "Playlist updated successfully."))

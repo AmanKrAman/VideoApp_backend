@@ -1,4 +1,5 @@
 // utils/cacheManager.js
+import { Playlist } from '../models/playlist.model.js';
 import { Video } from '../models/video.model.js';
 import redisClient from './redisClient.js';
 
@@ -31,7 +32,10 @@ class CacheManager {
             const { page = 1, limit = 10, videoId: vid = videoId } = params;
             return `comments:video:${vid}:list:${page}:${limit}`;
         },
-        videoCommentDetails: (videoId, commentId) => `comments:video:${videoId}:comment:${commentId}`
+        videoCommentDetails: (videoId, commentId) => `comments:video:${videoId}:comment:${commentId}`,
+
+        UserPlayList: (userId) => `playlists:list:${userId}`,
+        PlaylistList: (playlistId) => `playlists:list:${playlistId}`
     };
 
     //for bulk deletion
@@ -50,6 +54,11 @@ class CacheManager {
 
         allComments: 'comments:*',
         videoComments: (videoId) => `comments:*:${videoId}*`,
+
+        allPlaylists: `playlists:*`,
+        userPlayList: (userId) => `playlists:*:${userId}`,
+        playlistList: (playlistId) => `playlists:*:${playlistId}`,
+
     };
 
     async get(key) {
@@ -144,6 +153,17 @@ class CacheManager {
         const patterns = [
             this.patterns.allComments,
             this.patterns.videoComments(videoId)
+        ];
+    
+        for (const pattern of patterns) {
+            await this.clearByPattern(pattern);
+        }
+    }
+
+    async clearPlaylistCache(playlistId, userId) {
+        const patterns = [
+            this.patterns.playlistList(playlistId),
+            this.patterns.userPlayList(userId)
         ];
     
         for (const pattern of patterns) {
