@@ -23,6 +23,9 @@ class CacheManager {
 
         likelist: (userId) => `likes:list:${userId}`,
         userlikes: (userId) => `likes:user:${userId}`,
+
+        channelStats: (userId) => `channel:stats:${userId}`,
+        channelVideos: (userId) => `channel:videos:${userId}`,
     };
 
     //for bulk deletion
@@ -34,6 +37,10 @@ class CacheManager {
         userSpecific: (userId) => `*:*:${userId}*`,
         allLikes: 'likes:*',
         userlikes: (userId) => `likes:*:${userId}`,
+
+        allChannels: 'channel:*',
+        channelStats: (userId) => `channel:stats:${userId}*`,
+        channelVideos: (userId) => `channel:videos:${userId}*`,
     };
 
     async get(key) {
@@ -109,6 +116,17 @@ class CacheManager {
         ];
 
         for(const pattern of patterns){
+            await this.clearByPattern(pattern);
+        }
+    }
+
+    async clearChannelCache(userId) {
+        const patterns = [
+            this.patterns.channelVideos(userId),
+            this.patterns.channelStats(userId)
+        ];
+
+        for (const pattern of patterns) {
             await this.clearByPattern(pattern);
         }
     }

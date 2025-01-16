@@ -5,10 +5,19 @@ import {Like} from "../models/like.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import { cacheManager } from "../utils/cacheManager.js"
 
 const getChannelStats = asyncHandler(async (req, res) => {
     // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
     const user_id = req.user?._id;
+
+    const cacheKey = cacheManager.keys.channelStats(user_id);
+
+    const cachedStats = await cacheManager.get(cacheKey);
+    if (cachedStats) {
+        return res.json(new ApiResponse(200, cachedStats, "channel details fetched from cache"));
+    }
+
     const totalSubscribers = await Subscription.aggregate([
         {
             $match: {
@@ -70,6 +79,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
         totalviews: video[0]?.totalviews || 0,
         totalvideos: video[0]?.totalvideos || 0
     }
+    await cacheManager.set(cacheKey, channelstats, 30);
     return res  
     .status(200)
     .json(new ApiResponse(200, channelstats , "channel details fetched successfully"))
@@ -79,6 +89,14 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     // TODO: Get all the videos uploaded by the channel
 
     const user_id = req.user?._id
+
+    const cacheKey = cacheManager.keys.channelVideos(user_id);
+
+    const cachedvideos = await cacheManager.get(cacheKey);
+    if (cachedvideos) {
+        return res.json(new ApiResponse(200, cachedvideos, "channel videos fetched from cache"));
+    }
+
     const videos = await Video.aggregate([
         {
             $match: {
@@ -126,6 +144,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
             }
         }
     ]);
+    await cacheManager.set(cacheKey, videos, 30);
     return res
     .status(200)
     .json(new ApiResponse(200 , videos , "channel videos fetched successfully."))
