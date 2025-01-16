@@ -4,6 +4,7 @@ import {User} from "../models/user.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import { cacheManager } from "../utils/cacheManager.js"
 
 const createTweet = asyncHandler(async (req, res) => {
     //TODO: create tweet
@@ -20,6 +21,8 @@ const createTweet = asyncHandler(async (req, res) => {
         throw new ApiError(400 , "unable to create tweet, please try again.")
     }
 
+    await cacheManager.clearTweetCache(req.user?._id);
+
     return res
     .status(200)
     .json(new ApiResponse(200, "Tweet created successfully."))
@@ -28,6 +31,15 @@ const createTweet = asyncHandler(async (req, res) => {
 const getUserTweets = asyncHandler(async (req, res) => {
     // TODO: get user tweets
     const { userId } = req.params;
+
+    const cacheKey = cacheManager.keys.userTweets(userId);
+    const cachedTweets = await cacheManager.get(cacheKey);
+
+    if (cachedTweets) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, cachedTweets, 'Tweets fetched from cache'));
+    }
 
     if(!isValidObjectId(userId)){
         throw new ApiError(400, "Invalid userId");
@@ -102,9 +114,10 @@ const getUserTweets = asyncHandler(async (req, res) => {
             }
         }
     ])
+    await cacheManager.set(cacheKey, usertweets, cacheManager.EXTENDED_EXPIRATION);
     return res
-    .status(200)
-    .json(new ApiResponse(200 , usertweets , "Tweets fetched successfully."))
+        .status(200)
+        .json(new ApiResponse(200 , usertweets , "Tweets fetched successfully."))
 })
 
 const updateTweet = asyncHandler(async (req, res) => {
@@ -140,6 +153,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     if(!newTweet){
         throw new ApiError(500, "Tweet not done, Please try again.")
     }
+    await cacheManager.clearTweetCache(req.user?._id);
 
     return res
     .status(200)
@@ -161,6 +175,8 @@ const deleteTweet = asyncHandler(async (req, res) => {
         throw new ApiError(404, "only owner can delete the tweet")
     }
     await Tweet.findByIdAndDelete(tweetId)
+
+    await cacheManager.clearTweetCache(req.user?._id);
 
     return res
     .status(200)
