@@ -7,9 +7,19 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js"
+import { cacheManager } from "../utils/cacheManager.js"
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+
+    const cacheKey = cacheManager.keys.videoList(req.query);
+    const cachedData = await cacheManager.get(cacheKey);
+
+    if (cachedData) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, cachedData, 'Videos fetched successfully (from cache)'));
+    }
     
     const pipeline = [];
     if (query) {
@@ -76,6 +86,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
     const video = await Video.aggregatePaginate(videoAggregate, options);
 
+    await cacheManager.set(cacheKey, video);
     return res
         .status(200)
         .json(new ApiResponse(200, video, "Videos fetched successfully"));
@@ -92,6 +103,13 @@ const getVideoById = asyncHandler(async (req, res) => {
     if (!isValidObjectId(req.user?._id)) {
         throw new ApiError(400, "Invalid userId");
     }
+
+    const cachekey = cacheManager.keys.videoDetail(videoId, req.user?._id.toString())
+    const cachedVideo = await cacheManager.get(cachekey);
+    if (cachedVideo) {
+        return res.status(200).json(new ApiResponse(200, cachedVideo, "video details fetched successfully from cache"));
+    }
+
     const video = await Video.aggregate([
         {
             $match: {
@@ -183,7 +201,7 @@ const getVideoById = asyncHandler(async (req, res) => {
             }
         }
     ]);
-    if (!video) {
+    if (video.length == 0) {
         throw new ApiError(500, "failed to fetch video");
     }
 
@@ -198,6 +216,8 @@ const getVideoById = asyncHandler(async (req, res) => {
             watchHistory: videoId
         }
     });
+
+    await cacheManager.set(cachekey, video[0]);
 
     return res
         .status(200)
@@ -255,6 +275,12 @@ const publishAVideo = asyncHandler(async (req, res) => {
     if(!videoupload){
         throw new ApiError(500 , "Video upload failed , please try again.")
     }
+
+    await cacheManager.clearVideoCache(videoobj._id, req.user?._id);
+    await cacheManager.clearByPattern(cacheManager.patterns.userVideos(req.user?._id));
+    await cacheManager.clearByPattern(cacheManager.patterns.allVideos);
+
+
     return res
     .status(200)
     .json(new ApiResponse(200 , {video: videoobj}, "video uploaded successfully."))
@@ -313,6 +339,10 @@ const updateVideo = asyncHandler(async (req, res) => {
         await deleteFromCloudinary(thumbnailToDelete);
     }
 
+    await cacheManager.clearVideoCache(videoId, req.user?._id.toString());
+    await cacheManager.clearByPattern(cacheManager.patterns.userVideos(req.user?._id.toString()));
+    await cacheManager.clearByPattern(cacheManager.patterns.allVideos);
+
     return res
     .status(200)
     .json(new ApiResponse(200 , updatevideo , "video updated successfully."))
@@ -354,6 +384,10 @@ const deleteVideo = asyncHandler(async (req, res) => {
     await Comment.deleteMany({
         video: videoId,
     })
+
+    await cacheManager.clearVideoCache(videoId, req.user?._id.toString());
+    await cacheManager.clearByPattern(cacheManager.patterns.userVideos(req.user?._id.toString()));
+    await cacheManager.clearByPattern(cacheManager.patterns.allVideos);
     
     return res
         .status(200)
@@ -392,6 +426,8 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     if (!toggledVideoPublish) {
         throw new ApiError(500, "Failed to toogle video publish status");
     }
+
+    await cacheManager.clearVideoCache(videoId, req.user?._id);
 
     return res
         .status(200)
