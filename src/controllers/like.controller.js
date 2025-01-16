@@ -3,6 +3,7 @@ import {Like} from "../models/like.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import { cacheManager } from "../utils/cacheManager.js"
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
     const {videoId} = req.params
@@ -16,6 +17,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     })
     if(likedalready){
         await Like.findByIdAndDelete(likedalready?._id)
+        await cacheManager.clearLikesCache(req.user?._id);
 
         return res
         .status(200)
@@ -25,6 +27,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
         video : videoId,
         likedBy : req.user?._id
     })
+    await cacheManager.clearLikesCache(req.user?._id);
 
     return res
     .status(200)
@@ -93,6 +96,17 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 const getLikedVideos = asyncHandler(async (req, res) => {
     //TODO: get all liked videos
     const user_id = req.user?._id
+
+    const cacheKey = cacheManager.keys.userlikes(user_id);
+    const cachedLikes = await cacheManager.get(cacheKey);
+
+    if (cachedLikes) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, cachedLikes, 'Liked video fetched from cache'));
+    }
+
+
     const allLikedvideo = await Like.aggregate([
         {
             $match: {
@@ -151,6 +165,8 @@ const getLikedVideos = asyncHandler(async (req, res) => {
             },
         },
     ]);
+
+    await cacheManager.set(cacheKey, allLikedvideo, cacheManager.EXTENDED_EXPIRATION);
 
     return res
     .status(200)

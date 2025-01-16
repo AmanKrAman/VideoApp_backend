@@ -5,6 +5,8 @@ import {User} from "../models/user.model.js"
 import {uploadOnCloudinary , deleteFromCloudinary} from "../utils/cloudinary.js"
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
+import { cacheManager } from "../utils/cacheManager.js"
+import redisClient from "../utils/redisClient.js"
 
 
 const generateAccessAndRefereshTokens = async(userId) => {
@@ -136,7 +138,8 @@ const logoutUser = asyncHandler(async (req,res) => {
         httpOnly:true,
         secure: true
     }
-
+    await redisClient.flushdb();
+    
     return res
     .status(200)
     .clearCookie("accessToken", options)

@@ -1,4 +1,5 @@
 // utils/cacheManager.js
+import { Video } from '../models/video.model.js';
 import redisClient from './redisClient.js';
 
 class CacheManager {
@@ -19,6 +20,9 @@ class CacheManager {
         tweetList: (userId) => `tweets:list:${userId}`,
         tweetDetail: (tweetId) => `tweets:detail:${tweetId}`,
         userTweets: (userId) => `tweets:user:${userId}`,
+
+        likelist: (userId) => `likes:list:${userId}`,
+        userlikes: (userId) => `likes:user:${userId}`,
     };
 
     //for bulk deletion
@@ -27,7 +31,9 @@ class CacheManager {
         userVideos: (userId) => `videos:*:${userId}*`,
         allTweets: 'tweets:*',
         userTweets: (userId) => `tweets:*:${userId}*`,
-        userSpecific: (userId) => `*:*:${userId}*`
+        userSpecific: (userId) => `*:*:${userId}*`,
+        allLikes: 'likes:*',
+        userlikes: (userId) => `likes:*:${userId}`,
     };
 
     async get(key) {
@@ -96,6 +102,16 @@ class CacheManager {
         }
     }
 
+    async clearLikesCache(userId) {
+        const patterns = [
+            this.patterns.userlikes(userId),
+            this.keys.likelist(userId)
+        ];
+
+        for(const pattern of patterns){
+            await this.clearByPattern(pattern);
+        }
+    }
 }
 
 export const cacheManager = new CacheManager();
