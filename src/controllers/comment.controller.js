@@ -5,11 +5,25 @@ import { Like } from "../models/like.model.js";
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import { cacheManager } from "../utils/cacheManager.js"
 
 const getVideoComments = asyncHandler(async (req, res) => {
     //TODO: get all comments for a video
     const {videoId} = req.params
     const {page = 1, limit = 10} = req.query
+
+    const cacheKey = cacheManager.keys.videoCommentList(videoId, {
+        page,
+        limit,
+        videoId 
+    });
+    const cachedComments = await cacheManager.get(cacheKey);
+
+    if (cachedComments) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, cachedComments, "Comments fetched from cache successfully"));
+    }
 
     const video = await Video.findById(videoId);
 
@@ -85,6 +99,9 @@ const getVideoComments = asyncHandler(async (req, res) => {
         commentsAggregate,
         options
     );
+
+    await cacheManager.set(cacheKey , comments)
+
     return res
         .status(200)
         .json(new ApiResponse(200,comments , "Comments fetched successfully."))
@@ -111,6 +128,8 @@ const addComment = asyncHandler(async (req, res) => {
             video: videoId,
             owner: ownerId
         })
+
+        await cacheManager.clearCommentCache(videoId);
     
         return res
         .status(201)
@@ -153,6 +172,7 @@ const updateComment = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to edit comment please try again");
     }
 
+    await cacheManager.clearCommentCache(comment.video.toString());
     return res
         .status(200)
         .json(
@@ -181,6 +201,8 @@ const deleteComment = asyncHandler(async (req, res) => {
         comment: commentId,
         likedBy: req.user
     });
+
+    await cacheManager.clearCommentCache(comment.video.toString());
 
     return res
         .status(200)

@@ -26,6 +26,12 @@ class CacheManager {
 
         channelStats: (userId) => `channel:stats:${userId}`,
         channelVideos: (userId) => `channel:videos:${userId}`,
+
+        videoCommentList: (videoId, params = {}) => {
+            const { page = 1, limit = 10, videoId: vid = videoId } = params;
+            return `comments:video:${vid}:list:${page}:${limit}`;
+        },
+        videoCommentDetails: (videoId, commentId) => `comments:video:${videoId}:comment:${commentId}`
     };
 
     //for bulk deletion
@@ -41,6 +47,9 @@ class CacheManager {
         allChannels: 'channel:*',
         channelStats: (userId) => `channel:stats:${userId}*`,
         channelVideos: (userId) => `channel:videos:${userId}*`,
+
+        allComments: 'comments:*',
+        videoComments: (videoId) => `comments:*:${videoId}*`,
     };
 
     async get(key) {
@@ -126,6 +135,17 @@ class CacheManager {
             this.patterns.channelStats(userId)
         ];
 
+        for (const pattern of patterns) {
+            await this.clearByPattern(pattern);
+        }
+    }
+
+    async clearCommentCache(videoId) {
+        const patterns = [
+            this.patterns.allComments,
+            this.patterns.videoComments(videoId)
+        ];
+    
         for (const pattern of patterns) {
             await this.clearByPattern(pattern);
         }
