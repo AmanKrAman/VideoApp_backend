@@ -4,6 +4,7 @@ import { Subscription } from "../models/subscription.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import { cacheManager } from "../utils/cacheManager.js"
 
 
 const toggleSubscription = asyncHandler(async (req, res) => {
@@ -19,7 +20,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     })
     if(issubscribed){
         await Subscription.findByIdAndDelete(issubscribed?._id)
-
+        await cacheManager.clearSubscriptionCache(channelId, user_id)
         return res
         .status(200)
         .json(new ApiResponse(200, {channelId ,subscribed: false}, "Unsubscribed successfully."))
@@ -29,6 +30,9 @@ const toggleSubscription = asyncHandler(async (req, res) => {
         channel: channelId,
         subscriber: req.user?._id
     })
+
+    await cacheManager.clearSubscriptionCache(channelId, user_id)
+
     return res
     .status(200)
     .json(new ApiResponse(200 , {channelId, subscribed : true} ,"Subscribed successfully."))
@@ -36,13 +40,28 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
 // controller to return subscriber list of a channel  + //error in this endpoint
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
-    let { channelId } = req.params;  
+    let { subscriberId } = req.params;  
+    let channelId = subscriberId
 
     if (!isValidObjectId(channelId)) {
         throw new ApiError(400, "Invalid channelId");
     }
 
+    const cacheKey = cacheManager.keys.userChannelSubscriberList(channelId)
+    const cachedSubscribers = await cacheManager.get(cacheKey);
+
+    if (cachedSubscribers) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, cachedSubscribers, "Subscribers fetched successfully from cache"));
+    }
+
     channelId = new mongoose.Types.ObjectId(channelId);
+
+    const channelExists = await User.findById(channelId);
+    if (!channelExists) {
+        throw new ApiError(404, "Channel not found");
+    }
 
     const subscribers = await Subscription.aggregate([
         {
@@ -105,6 +124,8 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         },
     ]);
 
+    await cacheManager.set(cacheKey , subscribers)
+
     return res
         .status(200)
         .json(
@@ -116,9 +137,28 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         );
 })
 
-// controller to return channel list to which user has subscribed
+
 const getSubscribedChannels = asyncHandler(async (req, res) => {
-    const { subscriberId } = req.params
+    const { channelId } = req.params
+    const subscriberId = channelId
+
+    if(!isValidObjectId(subscriberId)){
+        throw new ApiError(400, "Invalid subscriberId");
+    }
+
+    const cacheKey = cacheManager.keys.userSubscribedChannelList(subscriberId)
+    const cachedChannels = await cacheManager.get(cacheKey);
+
+    if (cachedChannels) {
+        return res
+            .status(200)
+            .json(new ApiResponse(200, cachedChannels, "Channels fetched successfully from cache"));
+    }
+
+    const subscriberExists = await User.findById(subscriberId);
+    if (!subscriberExists) {
+        throw new ApiError(404, "Subscriber not found");
+    }
 
     const subscribedchannels = await Subscription.aggregate([
         {
@@ -171,6 +211,9 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
             }
         }
     ])
+
+    await cacheManager.set(cacheKey , subscribedchannels)
+
     return res
     .status(200)
     .json(new ApiResponse(200 , subscribedchannels, "channel fetched successfully."))

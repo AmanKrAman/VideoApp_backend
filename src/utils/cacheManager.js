@@ -35,7 +35,10 @@ class CacheManager {
         videoCommentDetails: (videoId, commentId) => `comments:video:${videoId}:comment:${commentId}`,
 
         UserPlayList: (userId) => `playlists:list:${userId}`,
-        PlaylistList: (playlistId) => `playlists:list:${playlistId}`
+        PlaylistList: (playlistId) => `playlists:list:${playlistId}`,
+
+        userChannelSubscriberList: (channelId) => `subscriptions:list:${channelId}`,
+        userSubscribedChannelList: (subscriberId) => `subscriptions:list:${subscriberId}`
     };
 
     //for bulk deletion
@@ -58,6 +61,11 @@ class CacheManager {
         allPlaylists: `playlists:*`,
         userPlayList: (userId) => `playlists:*:${userId}`,
         playlistList: (playlistId) => `playlists:*:${playlistId}`,
+
+
+        allSubscriptions: `subscriptions:*`,
+        userChannelSubscriberList: (channelId) => `subscriptions:*:${channelId}`,
+        userSubscribedChannelList: (subscriberId) => `subscriptions:*:${subscriberId}`,
 
     };
 
@@ -164,6 +172,17 @@ class CacheManager {
         const patterns = [
             this.patterns.playlistList(playlistId),
             this.patterns.userPlayList(userId)
+        ];
+    
+        for (const pattern of patterns) {
+            await this.clearByPattern(pattern);
+        }
+    }
+
+    async clearSubscriptionCache(channelId, subscriberId) {
+        const patterns = [
+            this.patterns.userChannelSubscriberList(channelId),
+            this.patterns.userSubscribedChannelList(subscriberId)
         ];
     
         for (const pattern of patterns) {
